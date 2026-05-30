@@ -1,0 +1,6 @@
+{
+  "name": "Sawit Rush",
+  "description": "A Diamond Rush inspired, single-file HTML5 Canvas game about oil palm plantation exploration with modern minimalist aesthetics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

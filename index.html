@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sawit Rush</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
+    <style>
+        body {
+            margin: 0; padding: 0; background-color: #020617;
+            display: flex; justify-content: center; align-items: center;
+            height: 100vh; overflow: hidden; font-family: 'Inter', sans-serif;
+            color: white; user-select: none;
+        }
+        #gameContainer {
+            position: relative; width: 800px; height: 600px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.7); border-radius: 8px;
+            overflow: hidden; background-color: #0f172a;
+        }
+        canvas { display: block; background-color: #1e293b; }
+        .overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            background: rgba(15, 23, 42, 0.85); z-index: 10; backdrop-filter: blur(4px);
+        }
+        .hidden { display: none !important; }
+        .card {
+            background: #1e293b; padding: 40px; border-radius: 12px;
+            border: 1px solid #334155; text-align: center; max-width: 500px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+        }
+        h1 { margin-top: 0; font-size: 36px; color: #f8fafc; letter-spacing: 1px; }
+        h2 { margin: 10px 0; font-size: 24px; font-weight: 600; }
+        p { font-size: 15px; }
+        button {
+            background: #16a34a; color: white; border: none; padding: 14px 32px;
+            font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer;
+            transition: 0.2s transform, 0.2s background-color; margin-top: 20px;
+            text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        button:hover { background: #15803d; transform: translateY(-2px); }
+        button:active { transform: translateY(0); }
+        
+        #hud {
+            position: absolute; top: 15px; left: 15px; right: 15px;
+            display: flex; justify-content: space-between; align-items: flex-start;
+            z-index: 5; pointer-events: none;
+        }
+        .hud-box {
+            background: #1e293b; border: 1px solid #334155; padding: 10px 20px;
+            border-radius: 8px; font-weight: bold; font-size: 20px; display: flex;
+            align-items: center; gap: 10px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+            pointer-events: auto;
+        }
+        .reset-btn {
+            background: #450a0a !important; border-color: #7f1d1d !important;
+            color: #fca5a5 !important; cursor: pointer; transition: 0.2s; padding: 10px 15px; margin: 0;
+        }
+        .reset-btn:hover { background: #7f1d1d !important; }
+        .reset-btn:active { transform: scale(0.95); }
+        
+        .text-green { color: #4ade80; } .text-orange { color: #fb923c; }
+        .text-red { color: #f87171; } .text-slate { color: #cbd5e1; }
+        .text-gold { color: #fbbf24; }
+        
+        .feedback-card {
+            background: #0f172a; padding: 14px; border-radius: 8px;
+            border: 1px solid #16a34a; margin-top: 25px; font-size: 14px;
+            text-align: left; line-height: 1.6; min-height: 120px; overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+
+<div id="gameContainer">
+    <div id="hud">
+        <div class="hud-box" style="color: #4ade80; font-weight: bold; font-style: italic;">
+            <span id="areaTitle">Lahan Mineral TBM</span>
+        </div>
+        <div class="hud-box" style="padding: 10px 15px; font-size: 16px;">
+            <span class="text-slate">LVL:</span> <span id="lvlDisplay" class="text-white">1</span>
+        </div>
+        <div class="hud-box" style="padding: 10px 15px; font-size: 16px;">
+            <span class="text-slate">SKOR:</span> <span id="scoreDisplay" class="text-green">0</span>
+        </div>
+        <div class="hud-box" style="padding: 10px 15px; font-size: 16px;">
+            <span class="text-slate">NYAWA:</span> <span id="livesDisplay">❤️❤️❤️</span>
+        </div>
+        <div class="hud-box" style="padding: 10px 15px; font-size: 16px;">
+            <span class="text-slate">WAKTU:</span> <span id="timeDisplay" class="text-gold">0s</span>
+        </div>
+    </div>
+
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    
+    <div id="startMenu" class="overlay">
+        <div class="card">
+            <h1>SAWIT RUSH</h1>
+            <p class="text-slate" style="margin-bottom: 25px; line-height: 1.6;">
+                Eksplorasi Perkebunan Sawit ekstrem.<br/>
+                <strong>Geser Batu</strong> untuk melewati hama.<br/>
+                Hati-hati, <strong>Lumpur Lahan Gambut</strong> akan membuatmu tergelincir!<br/>
+                Bertahan hidup dan kumpulkan TBS sebanyak mungkin sampai ke pintu keluar!<br/><br/>
+                Kemudi: <strong>W, A, S, D</strong> atau <strong>Panah</strong>.
+            </p>
+            <button onclick="startGame(true)">Mulai Ekspedisi</button>
+        </div>
+    </div>
+    
+    <div id="endMenu" class="overlay hidden">
+        <div class="card">
+            <h1 class="text-orange" id="endTitle">EKSPLORASI SELESAI!</h1>
+            <h2 style="font-size: 18px">Level: <span id="finalLevel" class="text-slate">1</span></h2>
+            <h2>Skor Panen: <span id="finalScore" class="text-green">0</span></h2>
+            <h2>Waktu Bermain: <span id="finalTime" class="text-gold">0s</span></h2>
+            
+            <div class="feedback-card">
+                <p id="aiFeedback" class="text-slate" style="margin: 0;"></p>
+            </div>
+            <button id="nextBtn" onclick="nextLevelBtn()">Lanjut (Level Berikutnya)</button>
+            <button id="restartBtn" onclick="startGame(true)" class="hidden" style="background:#b91c1c;">Mulai Ulang</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    const TILE = 50; 
+    let frame = 0, score = 0, level = 1, lives = 3, timeElapsed = 0, playing = false, levelComplete = false, timerInterval = null;
+    let camera = { x: 0, y: 0 };
+    
+    let fruits = [], bushes = [], chests = [], enemies = [], muds = [], rocks = [], particles = [], floatingTexts = [], checkpoints = [];
+    let exitPos = { c: -1, r: -1 };
+    let startPos = { c: 1, r: 1 };
+    let planter = { x: 0, y: 0, targetX: 0, targetY: 0, speed: 5, moving: false, celebratingTimer: 0, respawnTimer: 0 };
+    let savedState = null;
+    let environmentChanged = false;
+    
+    const ROWS = 25;
+    const COLS = 40;
+    let currentMapLayout = [];
+    
+    function generateMap(lvl) {
+        let newMap = [];
+        for (let r = 0; r < ROWS; r++) {
+            let row = new Array(COLS).fill('.');
+            for (let c = 0; c < COLS; c++) {
+                if (r === 0 || r === ROWS - 1 || c === 0 || c === COLS - 1) row[c] = 'T';
+            }
+            newMap.push(row);
+        }
+
+        const hLanesEnemy = [5, 17];
+        const hLanesMud = [11, 21];
+        const vLanesEnemy = [8, 24];
+        const vLanesMud = [16, 32];
+        const hLanes = [...hLanesEnemy, ...hLanesMud];
+        const vLanes = [...vLanesEnemy, ...vLanesMud];
+
+        for (let r = 1; r < ROWS - 1; r++) {
+            for (let c = 1; c < COLS - 1; c++) {
+                if (r <= 3 && c <= 3) continue;
+                if (r >= ROWS - 3 && c >= COLS - 3) continue;
+                if (hLanes.includes(r) || vLanes.includes(c)) continue;
+
+                let rand = Math.random();
+                if (rand < 0.20) newMap[r][c] = Math.random() < 0.5 ? 'W' : 'T';
+                else if (rand < 0.28) newMap[r][c] = 'B';
+                else if (rand < 0.36) newMap[r][c] = 'R';
+                else if (rand < 0.38) newMap[r][c] = 'G';
+                else if (rand < 0.40) newMap[r][c] = 'O';
+            }
+        }
+
+        newMap[ROWS - 2][COLS - 2] = '!';
+        newMap[1][1] = 'P';
+
+        let chestsPlaced = 0;
+        while (chestsPlaced < 3) {
+            let r = Math.floor(Math.random() * (ROWS - 2)) + 1;
+            let c = Math.floor(Math.random() * (COLS - 2)) + 1;
+            if (newMap[r][c] === '.' && !(r <= 3 && c <= 3) && !(r >= ROWS - 3 && c >= COLS - 3) && !hLanes.includes(r) && !vLanes.includes(c)) {
+                newMap[r][c] = 'C';
+                chestsPlaced++;
+            }
+        }
+
+        for (let r of hLanesEnemy) {
+            let enemiesInLane = 2 + Math.floor(lvl * 0.5);
+            if (lvl >= 3) enemiesInLane += Math.floor((lvl - 2) * 1.8);
+            if (enemiesInLane > 8) enemiesInLane = 8;
+            for(let i=0; i<enemiesInLane; i++) {
+                let c = Math.floor(Math.random() * (COLS - 2)) + 1;
+                if (!vLanes.includes(c)) newMap[r][c] = Math.random() < 0.5 ? 'H' : 'U';
+            }
+        }
+        for (let c of vLanesEnemy) {
+            let enemiesInLane = 2 + Math.floor(lvl * 0.5);
+            if (lvl >= 3) enemiesInLane += Math.floor((lvl - 2) * 1.8);
+            if (enemiesInLane > 8) enemiesInLane = 8;
+            for(let i=0; i<enemiesInLane; i++) {
+                let r = Math.floor(Math.random() * (ROWS - 2)) + 1;
+                if (!hLanes.includes(r)) newMap[r][c] = Math.random() < 0.5 ? 'V' : 'X';
+            }
+        }
+
+        for (let r of hLanesMud) {
+            let start = Math.floor(Math.random() * (COLS - 15)) + 1;
+            let len = Math.floor(Math.random() * 8) + 8;
+            for (let c = start; c < start + len && c < COLS - 1; c++) {
+                newMap[r][c] = 'M';
+            }
+        }
+        for (let c of vLanesMud) {
+            let start = Math.floor(Math.random() * (ROWS - 10)) + 1;
+            let len = Math.floor(Math.random() * 6) + 6;
+            for (let r = start; r < start + len && r < ROWS - 1; r++) {
+                newMap[r][c] = 'M';
+            }
+        }
+
+        return newMap.map(row => row.join(''));
+    }
+    
+    let keys = {};
+    window.addEventListener('keydown', (e) => {
+        let k = e.key.toLowerCase();
+        if(['arrowup','arrowdown','arrowleft','arrowright','w','a','s','d'].includes(k)) e.preventDefault();
+        keys[k] = true;
+    });
+    window.addEventListener('keyup', (e) => keys[e.key.toLowerCase()] = false);
+
+    function initMap() {
+        fruits = []; bushes = []; chests = []; enemies = []; fires = []; rocks = []; particles = []; floatingTexts = []; checkpoints = [];
+        exitPos = { c: -1, r: -1 };
+        
+        for (let r = 0; r < ROWS; r++) {
+            for (let c = 0; c < COLS; c++) {
+                let char = currentMapLayout[r][c];
+                if (char === 'P') startPos = { c, r };
+                else if (char === 'G') fruits.push({ c, r, type: 'green', points: 50, active: true });
+                else if (char === 'O') fruits.push({ c, r, type: 'orange', points: 150, active: true });
+                else if (char === 'B') bushes.push({ c, r, active: true });
+                else if (char === 'C') chests.push({ c, r, isOpen: false });
+                else if (char === 'R') rocks.push({ c, r, x: c*TILE, y: r*TILE, moving: false, targetX: c*TILE, targetY: r*TILE });
+                else if (char === '!') exitPos = { c, r };
+                else if (char === 'M') muds.push({ c, r });
+                else if (['U', 'u', 'X', 'x', 'H', 'h', 'V', 'v'].includes(char)) {
+                    let enemy = { type: 'babi', gridX: c, gridY: r, speed: 3 + Math.random() * 3, progress: 0 };
+                    if (char === 'U') { enemy.type = 'ular'; enemy.dirX = 1; enemy.dirY = 0; enemy.speed = 1.5 + Math.random(); }
+                    if (char === 'u') { enemy.type = 'ular'; enemy.dirX = -1; enemy.dirY = 0; enemy.speed = 1.5 + Math.random(); }
+                    if (char === 'X') { enemy.type = 'ular'; enemy.dirX = 0; enemy.dirY = 1; enemy.speed = 1.5 + Math.random(); }
+                    if (char === 'x') { enemy.type = 'ular'; enemy.dirX = 0; enemy.dirY = -1; enemy.speed = 1.5 + Math.random(); }
+                    if (char === 'H') { enemy.dirX = 1; enemy.dirY = 0; }
+                    if (char === 'h') { enemy.dirX = -1; enemy.dirY = 0; }
+                    if (char === 'V') { enemy.dirX = 0; enemy.dirY = 1; }
+                    if (char === 'v') { enemy.dirX = 0; enemy.dirY = -1; }
+                    enemy.x = c * TILE; enemy.y = r * TILE;
+                    enemies.push(enemy);
+                }
+            }
+        }
+    }
+    
+    function saveGameState(cpC, cpR) {
+        savedState = {
+            score: score, planter: { x: cpC*TILE, y: cpR*TILE },
+            rocks: rocks.map(r => ({ ...r })), fruits: fruits.map(f => ({ ...f })),
+            bushes: bushes.map(b => ({ ...b })), chests: chests.map(c => ({ ...c })),
+            enemies: enemies.map(e => ({ ...e }))
+        };
+        environmentChanged = false;
+    }
+    
+    function loadGameState(applyDamage = false) {
+        if (!savedState) return;
+        
+        score = savedState.score;
+        planter.x = savedState.planter.x; planter.y = savedState.planter.y;
+        planter.targetX = planter.x; planter.targetY = planter.y; planter.moving = false; planter.celebratingTimer = 0; planter.respawnTimer = 0;
+        
+        rocks = savedState.rocks.map(r => ({ ...r, moving: false, targetX: r.x, targetY: r.y }));
+        fruits = savedState.fruits.map(f => ({ ...f }));
+        bushes = savedState.bushes.map(b => ({ ...b }));
+        chests = savedState.chests.map(c => ({ ...c }));
+        
+        enemies = savedState.enemies.map(e => ({ ...e, x: e.gridX * TILE, y: e.gridY * TILE, progress: 0 }));
+        
+        environmentChanged = false;
+        updateCamera(true); updateHUD();
+    }
+    
+    window.startGame = function(resetAll = true) {
+        if (resetAll) {
+            level = 1;
+            score = 0;
+            lives = 3;
+            timeElapsed = 0;
+        } else {
+            level++;
+        }
+        document.getElementById('startMenu').classList.add('hidden'); document.getElementById('endMenu').classList.add('hidden');
+        
+        currentMapLayout = generateMap(level);
+        initMap(); 
+        
+        playing = true; levelComplete = false; frame = 0;
+        timeElapsed = 0; 
+        
+        planter.x = startPos.c * TILE; planter.y = startPos.r * TILE;
+        planter.targetX = planter.x; planter.targetY = planter.y; planter.respawnTimer = 0; environmentChanged = false;
+        saveGameState(startPos.c, startPos.r);
+        updateCamera(true); updateHUD();
+        
+        if (timerInterval) clearInterval(timerInterval);
+        timerInterval = setInterval(() => { 
+            if (playing && planter.celebratingTimer <= 0) { 
+                timeElapsed++; 
+                updateHUD();
+            } 
+        }, 1000);
+        requestAnimationFrame(gameLoop);
+    };
+
+    window.nextLevelBtn = function() {
+        window.startGame(false);
+    };
+    
+    function endGame(success = true, reason = "") {
+    playing = false; levelComplete = true; clearInterval(timerInterval);
+    document.getElementById('endMenu').classList.remove('hidden');
+    
+    document.getElementById('endTitle').innerText = success ? "MISI SELESAI!" : "MISI GAGAL!";
+    if (!success && reason) document.getElementById('endTitle').innerText += " (" + reason + ")";
+    
+    let totalPoints = score - (timeElapsed * 10);
+    if (totalPoints < 0) totalPoints = 0;
+    
+    document.getElementById('finalLevel').innerText = level;
+    document.getElementById('finalScore').innerText = score;
+    document.getElementById('finalTime').innerText = timeElapsed + 's';
+    
+    if (success) {
+        document.getElementById('nextBtn').classList.remove('hidden');
+        document.getElementById('restartBtn').classList.add('hidden');
+    } else {
+        document.getElementById('nextBtn').classList.add('hidden');
+        document.getElementById('restartBtn').classList.remove('hidden');
+    }
+    
+    let titles = [
+        { id: "magang", name: "Planter Magang", color: "#94a3b8" },
+        { id: "asisten", name: "Asisten Afdeling Mandiri", color: "#fbbf24" },
+        { id: "manajer", name: "Manajer Kebun Pintar", color: "#4ade80" },
+        { id: "dirut", name: "Direktur Utama Sawit 4.0", color: "#c084fc" }
+    ];
+
+    let finalTierIndex = 0;
+    if (totalPoints >= 16000) {
+        finalTierIndex = 3; 
+    } else if (totalPoints >= 6000) {
+        finalTierIndex = 2; 
+    } else if (totalPoints >= 1500) {
+        finalTierIndex = 1;
+    } else {
+        finalTierIndex = 0;
+    }
+
+    let currentTitle = titles[finalTierIndex].name;
+    let currentColor = titles[finalTierIndex].color;
+    
+    let titlesHtml = "<div style='margin-bottom: 12px; font-size: 14px;'>";
+    for (let i = 0; i < titles.length; i++) {
+        let isCurrent = (i === finalTierIndex);
+        let bulletColor = isCurrent ? titles[i].color : "#475569";
+        let op = isCurrent ? "1.0" : "0.5";
+        let fw = isCurrent ? "bold" : "normal";
+        titlesHtml += `<div style="color: ${bulletColor}; opacity: ${op}; font-weight: ${fw}; margin-bottom: 4px;">`;
+        if (isCurrent) titlesHtml += "👉 ";
+        titlesHtml += `${titles[i].name} `;
+        if (i === 0) titlesHtml += `(< 1500 pts)`;
+        else if (i === 1) titlesHtml += `(1500 - 5999 pts)`;
+        else if (i === 2) titlesHtml += `(6000 - 15999 pts)`;
+        else titlesHtml += `(>= 16000 pts)`;
+        titlesHtml += `</div>`;
+    }
+    titlesHtml += "</div>";
+    
+    // baseInfoText HANYA berisi teks info skor dasar (TIDAK menyertakan list kualifikasi)
+    let baseInfoText = `Titel Performa: <strong style='color: ${currentColor}; font-size: 18px;'>${currentTitle}</strong><br/>`;
+    baseInfoText += `Total Poin: ${totalPoints} <span style='font-size: 12px; color: #94a3b8;'>(Skor: ${score} - Waktu: ${timeElapsed}x10)</span><br/><br/>`;
+    
+    // Gabungkan susunan info dasar + list kualifikasi satu kali di sini
+    let completeContainerText = baseInfoText + titlesHtml;
+
+    let localFeedbacks = [
+        "Kerja bagus di lapangan! Manajemen waktu dan pembersihan hama ular cukup efisien. Pertahankan performa ini di afdeling berikutnya!",
+        "Eksplorasi yang solid. Penggunaan batu untuk melindas ular sangat taktis, namun waspadai jebakan lumpur gambut agar waktu tidak terbuang.",
+        "Luar biasa! Strategi Anda dalam mengumpulkan TBS dan membuka peti CPO menunjukkan mentalitas seorang planters sejati.",
+        "Operasi berjalan lancar. Terus tingkatkan kecepatan Anda melewati jalur ekstrem perkebunan untuk efisiensi maksimal!"
+    ];
+    let randomLocalFeedback = localFeedbacks[Math.floor(Math.random() * localFeedbacks.length)];
+    
+    // Tampilan awal saat memuat
+    document.getElementById('aiFeedback').innerHTML = completeContainerText + "<strong style='color: #4ade80;'>Evaluasi AI:</strong> <span style='color: #94a3b8; font-style: italic;'>Menyusun laporan lapangan...</span>";
+
+    if (success) {
+        fetch('/api/gemini', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title: currentTitle, score, time: timeElapsed })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.text) {
+                document.getElementById('aiFeedback').innerHTML = completeContainerText + "<strong style='color: #4ade80;'>Evaluasi Mandor AI:</strong> " + data.text;
+            } else {
+                document.getElementById('aiFeedback').innerHTML = completeContainerText + "<strong style='color: #4ade80;'>Evaluasi Mandor AI (Lokal):</strong> " + randomLocalFeedback;
+            }
+        })
+        .catch(err => {
+            // Menggunakan completeContainerText sehingga tidak akan menduplikasi titlesHtml lagi
+            document.getElementById('aiFeedback').innerHTML = completeContainerText + "<strong style='color: #4ade80;'>Evaluasi Mandor AI (Lokal):</strong> " + randomLocalFeedback;
+        });
+    } else {
+        let failText = completeContainerText + "<strong style='color: #f87171;'>Evaluasi Mandor AI:</strong> Misi dihentikan. Analisis lapangan menunjukkan terlalu banyak risiko fatal. Pastikan memanfaatkan batu pembatas untuk perlindungan.";
+        document.getElementById('aiFeedback').innerHTML = failText;
+    }
+}
+    
+    function updateHUD() {
+        let areaName = "Lahan Mineral TBM";
+        if (level === 2 || level === 3) areaName = "Kawasan Gambut Afdeling I";
+        else if (level >= 4) areaName = "Perkebunan Inti Sawit 4.0";
+        document.getElementById('areaTitle').innerText = areaName;
+
+        document.getElementById('lvlDisplay').innerText = level; 
+        document.getElementById('scoreDisplay').innerText = score; 
+        document.getElementById('timeDisplay').innerText = timeElapsed + 's';
+        
+        let hearts = "";
+        for(let i=0; i<Math.max(0, lives); i++) hearts += "❤️";
+        document.getElementById('livesDisplay').innerText = hearts;
+    }
+
+    function checkExitStatus() {
+        if (chests.length > 0 && chests.every(c => c.isOpen)) spawnFloatingText("SEMUA PETI TERBUKA!", planter.x + TILE/2, planter.y - 40, "#4ade80");
+    }
+
+    // --- Fungsi Hit Planter Modifikasi (Mekanik Tetap di Tempat & Kebal Sementara) ---
+    function hitPlanter() {
+        lives--; 
+        updateHUD(); 
+        
+        if (lives <= 0) {
+            endGame(false, "Kehabisan Nyawa!");
+            return;
+        }
+        
+        // Aktifkan durasi kebal selama 120 frame (~2 detik)
+        // Koordinat planter sengaja tidak di-reset agar ia tetap diam di lokasi tabrakan terakhir
+        planter.respawnTimer = 120; 
+        
+        spawnFloatingText("NYAWA -1!", planter.x + TILE/2, planter.y - 10, "#ef4444");
+        spawnParticles(planter.x + TILE/2, planter.y + TILE/2, "#ef4444");
+    }
+
+    // --- Helpers ---
+    function getMud(c, r) { return muds.find(m => m.c === c && m.r === r); }
+    function isSolid(c, r) {
+        if (c < 0 || c >= COLS || r < 0 || r >= ROWS) return true;
+        let char = currentMapLayout[r][c];
+        if (char === 'W' || char === 'T') return true;
+        return false;
+    }
+    function getBush(c, r) { return bushes.find(b => b.c === c && b.r === r && b.active); }
+    function getChest(c, r) { return chests.find(ch => ch.c === c && ch.r === r); }
+    function getRockCurrentOrTarget(c, r) { return rocks.find(rk => (rk.c === c && rk.r === r) || (Math.round(rk.targetX/TILE) === c && Math.round(rk.targetY/TILE) === r)); }
+    
+    function spawnFloatingText(text, x, y, color = "#fbbf24") { floatingTexts.push({ text, x, y, life: 60, maxLife: 60, color }); }
+    function spawnParticles(x, y, color) {
+        for (let i = 0; i < 12; i++) particles.push({ x, y, vx: (Math.random()-0.5)*6, vy: (Math.random()-0.5)*6, life: 20+Math.random()*20, maxLife: 40, color });
+    }
+
+    function updateCamera(instant = false) {
+        let mapWidth = COLS * TILE; let mapHeight = ROWS * TILE;
+        let targetX = planter.x + TILE/2 - canvas.width / 2; let targetY = planter.y + TILE/2 - canvas.height / 2;
+        if (instant) { camera.x = targetX; camera.y = targetY; } 
+        else { camera.x += (targetX - camera.x) * 0.1; camera.y += (targetY - camera.y) * 0.1; }
+        camera.x = Math.max(0, Math.min(camera.x, mapWidth - canvas.width)); camera.y = Math.max(0, Math.min(camera.y, mapHeight - canvas.height));
+    }
+    function isInView(x, y) { return (x >= camera.x - TILE*2 && x <= camera.x + canvas.width + TILE*2 && y >= camera.y - TILE*2 && y <= camera.y + canvas.height + TILE*2); }
+
+    function attemptMove(nextX, nextY, dx, dy) {
+        let gridX = Math.round(nextX / TILE); let gridY = Math.round(nextY / TILE);
+        
+        if (!isSolid(gridX, gridY)) {
+            let rock = getRockCurrentOrTarget(gridX, gridY); let bush = getBush(gridX, gridY); let chest = getChest(gridX, gridY);
+            
+            planter.lastDx = dx; planter.lastDy = dy; 
+
+            if (gridX === exitPos.c && gridY === exitPos.r) {
+                planter.targetX = nextX; planter.targetY = nextY; planter.moving = true; setTimeout(() => endGame(true), 400); return;
+            }
+            
+            if (rock) {
+                let rNextC = gridX + Math.sign(dx); let rNextR = gridY + Math.sign(dy);
+                let blocked = isSolid(rNextC, rNextR) || getRockCurrentOrTarget(rNextC, rNextR) || getChest(rNextC, rNextR) || (rNextC===exitPos.c && rNextR===exitPos.r);
+                if (!blocked) {
+                    for (let e of enemies) {
+                        if (e.type === 'babi' && Math.round(e.x/TILE) === rNextC && Math.round(e.y/TILE) === rNextR) { blocked = true; break; }
+                    }
+                }
+                if (!blocked) { 
+                    let rBush = getBush(rNextC, rNextR);
+                    if (rBush) {
+                        rBush.active = false;
+                        spawnParticles(rNextC*TILE + TILE/2, rNextR*TILE + TILE/2, "#15803d");
+                    }
+                    rock.c = rNextC; rock.r = rNextR; rock.targetX = rNextC*TILE; rock.targetY = rNextR*TILE; rock.moving = true; planter.targetX = nextX; planter.targetY = nextY; planter.moving = true; 
+                    environmentChanged = true;
+                }
+            } else if (bush) {
+                bush.active = false; spawnParticles(nextX + TILE/2, nextY + TILE/2, "#15803d");
+                environmentChanged = true;
+            } else if (chest && !chest.isOpen) {
+                chest.isOpen = true; score += 1000; planter.celebratingTimer = 75; updateHUD();
+                spawnParticles(nextX + TILE/2, nextY + TILE/2, "#fbbf24"); spawnFloatingText("+1000 CPO!", nextX + TILE/2, nextY - 10, "#fbbf24"); checkExitStatus();
+                environmentChanged = true;
+            } else {
+                planter.targetX = nextX; planter.targetY = nextY; planter.moving = true;
+            }
+        }
+    }
+
+    function updateGameEntities() {
+        if (planter.celebratingTimer > 0) planter.celebratingTimer--;
+        
+        // Kurangi masa kebal jika aktif setiap frame-nya
+        if (planter.respawnTimer > 0) planter.respawnTimer--;
+        
+        if (!planter.moving) {
+            let dx = 0, dy = 0;
+            if (keys['arrowup'] || keys['w']) dy = -TILE; else if (keys['arrowdown'] || keys['s']) dy = TILE;
+            else if (keys['arrowleft'] || keys['a']) dx = -TILE; else if (keys['arrowright'] || keys['d']) dx = TILE;
+            if (dx !== 0 || dy !== 0) {
+                attemptMove(planter.x + dx, planter.y + dy, dx, dy);
+            }
+        } else {
+            let pc = Math.round(planter.x / TILE); let pr = Math.round(planter.y / TILE);
+            let currentSpeed = planter.speed;
+            if (getMud(pc, pr) || getMud(Math.round(planter.targetX / TILE), Math.round(planter.targetY / TILE))) {
+                currentSpeed = 15; 
+            }
+            planter.x += Math.sign(planter.targetX - planter.x) * currentSpeed; planter.y += Math.sign(planter.targetY - planter.y) * currentSpeed;
+            if (Math.abs(planter.x - planter.targetX) <= currentSpeed && Math.abs(planter.y - planter.targetY) <= currentSpeed) {
+                planter.x = planter.targetX; planter.y = planter.targetY; planter.moving = false;
+                let pc = Math.round(planter.x / TILE); let pr = Math.round(planter.y / TILE);
+                let fruit = fruits.find(f => f.c === pc && f.r === pr && f.active);
+                if (fruit) {
+                    fruit.active = false; score += fruit.points; updateHUD();
+                    spawnParticles(planter.x + TILE/2, planter.y + TILE/2, fruit.type === 'green' ? "#16a34a" : "#ea580c");
+                    spawnFloatingText("+" + fruit.points, planter.x + TILE/2, planter.y, fruit.type === 'green' ? "#4ade80" : "#fb923c");
+                    environmentChanged = true;
+                }
+                if (getMud(pc, pr) && (planter.lastDx !== 0 || planter.lastDy !== 0)) {
+                    attemptMove(planter.x + planter.lastDx, planter.y + planter.lastDy, planter.lastDx, planter.lastDy);
+                }
+            }
+        }
+        
+        for(let r of rocks) {
+            if(r.moving) {
+                let rc = Math.round(r.x / TILE); let rr = Math.round(r.y / TILE);
+                let currentSpeed = planter.speed;
+                if (getMud(rc, rr) || getMud(Math.round(r.targetX / TILE), Math.round(r.targetY / TILE))) {
+                    currentSpeed = 15;
+                }
+                r.x += Math.sign(r.targetX - r.x) * currentSpeed; r.y += Math.sign(r.targetY - r.y) * currentSpeed;
+                
+                for (let i = enemies.length - 1; i >= 0; i--) {
+                    let e = enemies[i];
+                    if (e.type === 'ular' && Math.hypot((r.x+TILE/2) - (e.x+TILE/2), (r.y+TILE/2) - (e.y+TILE/2)) < TILE * 0.70) {
+                        enemies.splice(i, 1);
+                        score += 30; updateHUD();
+                        spawnParticles(e.x + TILE/2, e.y + TILE/2, "#22c55e"); 
+                        spawnParticles(e.x + TILE/2, e.y + TILE/2, "#64748b"); 
+                        spawnFloatingText("TERGILAS!", e.x + TILE/2, e.y - 10, "#ef4444");
+                    }
+                }
+                
+                if(Math.abs(r.x - r.targetX) <= currentSpeed && Math.abs(r.y - r.targetY) <= currentSpeed){
+                    r.x = r.targetX; r.y = r.targetY; r.moving = false;
+                }
+            }
+        }
+        
+        for (let e of enemies) {
+            e.progress += e.speed;
+            if (e.progress >= TILE) {
+                e.gridX += e.dirX; e.gridY += e.dirY; e.progress -= TILE;
+                let gx = e.gridX + e.dirX; let gy = e.gridY + e.dirY;
+                let chestClosed = getChest(gx, gy) && !getChest(gx, gy).isOpen;
+                if (isSolid(gx, gy) || getRockCurrentOrTarget(gx, gy) || getBush(gx, gy) || chestClosed || (gx===exitPos.c && gy===exitPos.r)) { e.dirX *= -1; e.dirY *= -1; }
+            }
+            e.x = e.gridX * TILE + e.dirX * e.progress; e.y = e.gridY * TILE + e.dirY * e.progress;
+            
+            // Pengecekan tabrakan hanya aktif saat planter TIDAK sedang merayakan (celebrating) dan TIDAK kebal (respawnTimer <= 0)
+            if (planter.celebratingTimer <= 0 && planter.respawnTimer <= 0 && Math.hypot((planter.x+TILE/2) - (e.x+TILE/2), (planter.y+TILE/2) - (e.y+TILE/2)) < TILE * 0.70) {
+                hitPlanter();
+            }
+        }
+    }
+
+    // --- Renderers ---
+    function drawDirtWall(x, y) {
+        ctx.fillStyle = "#451a03"; ctx.fillRect(x, y, TILE, TILE);
+        ctx.fillStyle = "#78350f"; ctx.fillRect(x+2, y+2, TILE-4, TILE-4);
+        ctx.fillStyle = "#92400e"; ctx.fillRect(x+8, y+5, 12, 8); ctx.fillRect(x+25, y+15, 15, 10); ctx.fillRect(x+5, y+30, 14, 10);
+    }
+    
+    function drawTreeWall(x, y) {
+        ctx.fillStyle = "#020617"; ctx.fillRect(x, y, TILE, TILE);
+        ctx.save(); ctx.translate(x + TILE/2, y + TILE/2);
+        ctx.fillStyle = "#522607"; ctx.fillRect(-8,-8,16,16); 
+        ctx.strokeStyle = "#451a03"; ctx.lineWidth = 2;
+        for(let py of [-4, 0, 4]) { ctx.beginPath(); ctx.moveTo(-8, py); ctx.lineTo(8, py); ctx.stroke(); }
+        ctx.fillStyle = "#064e3b"; ctx.strokeStyle = "#047857"; ctx.lineWidth = 2;
+        for (let i = 0; i < 8; i++) {
+            ctx.rotate(Math.PI / 4); ctx.beginPath(); ctx.moveTo(0, 0);
+            ctx.quadraticCurveTo(TILE/2+4, -8, TILE/2+10, 0); ctx.quadraticCurveTo(TILE/2+4, 8, 0, 0); ctx.fill(); ctx.stroke();
+        }
+        ctx.fillStyle = "#059669"; ctx.beginPath(); ctx.arc(0, 0, 10, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = "#ef4444"; ctx.beginPath(); ctx.arc(6, 6, 4, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(-5, 7, 4, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(0, -6, 4, 0, Math.PI*2); ctx.fill();
+        ctx.restore();
+    }
+
+    function drawRock(x, y) {
+        ctx.save(); ctx.translate(x + TILE/2, y + TILE/2);
+        ctx.fillStyle = "rgba(0,0,0,0.3)"; ctx.beginPath(); ctx.arc(0,6,16, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = "#64748b"; ctx.beginPath(); ctx.arc(0,0,18, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = "#94a3b8"; ctx.beginPath(); ctx.arc(-4,-6,8, 0, Math.PI*2); ctx.fill();
+        ctx.strokeStyle = "#334155"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0,0,18, 0, Math.PI*2); ctx.stroke();
+        ctx.restore();
+    }
+    
+    function drawMud(x, y) {
+        ctx.save(); ctx.translate(x + TILE/2, y + TILE/2);
+        ctx.fillStyle = "#3f2b18"; 
+        ctx.beginPath();
+        ctx.arc(-5, -5, 12, 0, Math.PI*2);
+        ctx.arc(8, 2, 14, 0, Math.PI*2);
+        ctx.arc(-4, 10, 10, 0, Math.PI*2);
+        ctx.fill();
+        
+        ctx.fillStyle = "#5c4033"; 
+        ctx.beginPath();
+        ctx.arc(5, 5, 8, 0, Math.PI*2);
+        ctx.arc(-8, 2, 6, 0, Math.PI*2);
+        ctx.fill();
+        
+        ctx.fillStyle = "rgba(0,0,0,0.3)";
+        let t = Date.now() / 1000;
+        let r1 = 2 + Math.sin(t * 3 + x) * 1;
+        let r2 = 3 + Math.sin(t * 4 + y) * 1;
+        ctx.beginPath(); ctx.arc(-2, 4, r1, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(6, -4, r2, 0, Math.PI*2); ctx.fill();
+        
+        ctx.restore();
+    }
+
+    function drawExit(x, y, open) {
+        ctx.save(); ctx.translate(x + TILE/2, y + TILE/2);
+        ctx.fillStyle = "#020617"; ctx.fillRect(-22, -22, 44, 44); ctx.strokeStyle = "#475569"; ctx.lineWidth = 4; ctx.strokeRect(-22, -22, 44, 44);
+        if(!open) { ctx.strokeStyle = "#94a3b8"; ctx.lineWidth = 3; for(let i=-12; i<=12; i+=8) { ctx.beginPath(); ctx.moveTo(i, -22); ctx.lineTo(i, 22); ctx.stroke(); } ctx.fillStyle = "#ef4444"; ctx.fillRect(-6, -6, 12, 12); }
+        else { ctx.fillStyle = "rgba(34, 197, 94, 0.3)"; ctx.fillRect(-18, -18, 36, 36); ctx.fillStyle = "#4ade80"; ctx.beginPath(); ctx.arc(0,0, 10+Math.sin(frame*0.1)*3, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = "#fff"; ctx.font = "bold 10px Inter"; ctx.textAlign = "center"; ctx.fillText("FINISH", 0, -5); }
+        ctx.restore();
+    }
+
+    function drawTBS(cx, cy, color) { 
+        ctx.save(); ctx.translate(cx, cy); 
+        ctx.fillStyle = "#451a03"; 
+        ctx.beginPath(); ctx.ellipse(0, -6, 6, 8, 0, 0, Math.PI*2); ctx.fill();
+        let fruitRad = 4.5;
+        let positions = [
+            [-8, -2], [8, -2], [-10, 4], [10, 4], [-6, 10], [6, 10], [0, 13],
+            [-4, 2], [4, 2], [-5, 6], [5, 6], [0, 8], [0, 0], [-2, -5], [2, -5]
+        ];
+        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+        for (let pos of positions) {
+            ctx.beginPath();
+            ctx.moveTo(pos[0]-fruitRad+2, pos[1]+2);
+            ctx.lineTo(pos[0]+fruitRad+2, pos[1]+2);
+            ctx.lineTo(pos[0]+2, pos[1]+fruitRad*1.5+2);
+            ctx.fill();
+        }
+        ctx.fillStyle = color;
+        for (let pos of positions) {
+            ctx.beginPath();
+            ctx.moveTo(pos[0]-fruitRad, pos[1]);
+            ctx.lineTo(pos[0]+fruitRad, pos[1]);
+            ctx.lineTo(pos[0], pos[1]+fruitRad*1.5);
+            ctx.fill();
+            ctx.beginPath(); ctx.arc(pos[0], pos[1], fruitRad, Math.PI, 0); ctx.fill();
+        }
+        ctx.fillStyle = 'rgba(255,255,255,0.2)';
+        for (let pos of positions) {
+            ctx.beginPath();
+            ctx.arc(pos[0]-1, pos[1]-1, fruitRad*0.4, 0, Math.PI*2);
+            ctx.fill();
+        }
+        ctx.restore(); 
+    }
+    
+    function drawChest(x, y, isOpen) {
+        ctx.save(); ctx.translate(x+TILE/2, y+TILE/2); ctx.fillStyle = "#b45309"; ctx.fillRect(-16, -6, 32, 18); ctx.strokeStyle = "#78350f"; ctx.lineWidth = 3; ctx.strokeRect(-16, -6, 32, 18);
+        if (isOpen) { ctx.fillStyle = "#92400e"; ctx.fillRect(-16, -16, 32, 10); ctx.strokeRect(-16, -16, 32, 10); ctx.fillStyle = "rgba(252, 211, 77, 0.4)"; ctx.beginPath(); ctx.arc(0, -6, 12, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = "#fde68a"; ctx.fillRect(-4, -4, 8, 4); }
+        else { ctx.fillStyle = "#92400e"; ctx.beginPath(); ctx.arc(0, -6, 16, Math.PI, 0); ctx.fill(); ctx.stroke(); ctx.fillStyle = "#fbbf24"; ctx.fillRect(-4, -8, 8, 8); }
+        ctx.restore();
+    }
+    
+    function drawBush(x, y) {
+        ctx.save(); ctx.translate(x+TILE/2, y+TILE/2); 
+        ctx.fillStyle = "rgba(0,0,0,0.3)"; ctx.beginPath(); ctx.ellipse(0, 10, 16, 6, 0, 0, Math.PI*2); ctx.fill();
+        
+        const leaves = [
+            { x: -10, y: 2, r: 8, col: "#14532d" },
+            { x: 10, y: 2, r: 8, col: "#14532d" },
+            { x: 0, y: -6, r: 10, col: "#15803d" },
+            { x: -8, y: -4, r: 7, col: "#16a34a" },
+            { x: 8, y: -4, r: 7, col: "#16a34a" },
+            { x: -4, y: 6, r: 8, col: "#15803d" },
+            { x: 4, y: 6, r: 8, col: "#15803d" },
+            { x: 0, y: -12, r: 7, col: "#22c55e" },
+            { x: -12, y: -1, r: 6, col: "#16a34a" },
+            { x: 12, y: -1, r: 6, col: "#16a34a" }
+        ];
+        
+        for (let l of leaves) {
+            ctx.fillStyle = l.col;
+            ctx.beginPath(); 
+            ctx.ellipse(l.x, l.y, l.r*1.1, l.r*0.8, -Math.PI/4 + l.x*0.1, 0, Math.PI*2); 
+            ctx.fill();
+        }
+        
+        ctx.fillStyle = "#4ade80";
+        ctx.beginPath(); ctx.ellipse(-2, -14, 3, 1.5, -Math.PI/6, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(-10, -3, 2, 1, -Math.PI/4, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(8, -6, 2.5, 1.2, Math.PI/4, 0, Math.PI*2); ctx.fill();
+        
+        ctx.restore();
+    }
+    
+    function drawUlar(x, y, dirX, dirY, frame) {
+        ctx.save(); ctx.translate(x+TILE/2, y+TILE/2); 
+        if (dirX < 0) ctx.scale(-1, 1); 
+        else if (dirY > 0) ctx.rotate(Math.PI/2); 
+        else if (dirY < 0) ctx.rotate(-Math.PI/2);
+        
+        let segments = 12;
+        ctx.lineWidth = 1;
+        
+        for (let i = segments; i >= 0; i--) {
+            let offset = Math.sin(frame * 0.4 - i * 0.6) * 5;
+            let cx = 10 - i * 2.5; 
+            let cy = offset;
+            let size = i === 0 ? 5 : (i === segments ? 2 : 4.5 - (i/segments)*2); 
+            
+            ctx.fillStyle = i % 2 === 0 ? "#16a34a" : "#22c55e"; 
+            ctx.strokeStyle = "#14532d";
+            ctx.beginPath();
+            ctx.arc(cx, cy, size, 0, Math.PI*2);
+            ctx.fill();
+            ctx.stroke();
+            
+            if (i === 0) {
+                ctx.fillStyle = "#ef4444";
+                ctx.beginPath(); ctx.arc(cx + 2, cy - 2, 1.2, 0, Math.PI*2); ctx.fill();
+                ctx.beginPath(); ctx.arc(cx + 2, cy + 2, 1.2, 0, Math.PI*2); ctx.fill();
+                
+                if (Math.sin(frame * 0.3) > 0) {
+                    ctx.strokeStyle = "#ef4444";
+                    ctx.beginPath();
+                    ctx.moveTo(cx + 4, cy);
+                    ctx.lineTo(cx + 10, cy + (Math.sin(frame * 1.5) * 2));
+                    ctx.stroke();
+                }
+            }
+        }
+        ctx.restore();
+    }
+    
+    function drawBabi(x, y, dirX, dirY, frame) {
+        ctx.save(); ctx.translate(x+TILE/2, y+TILE/2); 
+        if (dirX < 0) ctx.scale(-1, 1); 
+        else if (dirY > 0) ctx.rotate(Math.PI/2); 
+        else if (dirY < 0) ctx.rotate(-Math.PI/2);
+        
+        ctx.translate(0, -Math.sin(frame*0.4)*3); 
+        
+        let legO = Math.sin(frame*0.6)*6; 
+        ctx.strokeStyle="#1c1917"; ctx.lineWidth=4; ctx.lineCap="round"; 
+        ctx.beginPath(); ctx.moveTo(-6,10); ctx.lineTo(-6-legO,16); ctx.stroke(); 
+        ctx.beginPath(); ctx.moveTo(8,10); ctx.lineTo(8+legO,16); ctx.stroke();  
+        
+        ctx.fillStyle = "#292524"; 
+        ctx.beginPath();
+        ctx.moveTo(-16, -2);   
+        ctx.quadraticCurveTo(-14, -14, -2, -12); 
+        ctx.quadraticCurveTo(8, -10, 16, -6);  
+        ctx.lineTo(20, -2);    
+        ctx.lineTo(20, 4);     
+        ctx.lineTo(12, 8);     
+        ctx.lineTo(6, 12);     
+        ctx.lineTo(-10, 12);   
+        ctx.lineTo(-18, 6);    
+        ctx.closePath();
+        ctx.fill();
+        
+        ctx.strokeStyle = "#1c1917"; ctx.lineWidth = 2;
+        for (let i=-12; i<6; i+=4) {
+            ctx.beginPath(); ctx.moveTo(i, -11 - (i== -4 ? 2 : 0)); ctx.lineTo(i-4, -16 - (i== -4 ? 2 : 0)); ctx.stroke();
+        }
+
+        ctx.fillStyle = "#44403c";
+        ctx.beginPath(); ctx.ellipse(20, 1, 3, 4, 0, 0, Math.PI*2); ctx.fill();
+        
+        ctx.fillStyle = "#f8fafc"; 
+        ctx.beginPath(); ctx.moveTo(16, 6); ctx.lineTo(24, 0); ctx.lineTo(18, 4); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(16, 6); ctx.lineTo(26, -5); ctx.lineTo(19, 2); ctx.fill();
+        
+        ctx.fillStyle = "#ef4444"; 
+        ctx.beginPath(); ctx.arc(10, -4, 1.5, 0, Math.PI*2); ctx.fill();
+
+        ctx.strokeStyle="#44403c"; ctx.lineWidth=4; ctx.lineCap="round"; 
+        ctx.beginPath(); ctx.moveTo(-10,12); ctx.lineTo(-10+legO,18); ctx.stroke(); 
+        ctx.beginPath(); ctx.moveTo(12,10); ctx.lineTo(12-legO,18); ctx.stroke();  
+        
+        ctx.strokeStyle="#1c1917"; ctx.lineWidth=2;
+        ctx.beginPath(); ctx.moveTo(-17, -2); ctx.quadraticCurveTo(-22, -6, -20, -10); ctx.stroke();
+
+        ctx.restore();
+    }
+    
+    function drawPlanter(x, y, frame) {
+        ctx.save(); ctx.translate(x+TILE/2, y+TILE/2); if (planter.celebratingTimer > 0) ctx.translate(0, -8); else ctx.translate(0, planter.moving?Math.sin(frame*0.6)*2.5:Math.sin(frame*0.1)*0.5);
+        ctx.fillStyle = "#b45309"; ctx.fillRect(-10, 0, 20, 16); ctx.fillStyle = "#ffccb6"; ctx.beginPath(); ctx.arc(0,-6,9, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = "#eab308"; ctx.beginPath(); ctx.arc(0,-8,10, Math.PI, 0); ctx.fill(); ctx.fillRect(-12,-9,24,3); ctx.strokeStyle = "#ffccb6"; ctx.lineWidth = 4; ctx.lineCap = "round"; ctx.beginPath();
+        if (planter.celebratingTimer > 0) { ctx.moveTo(-11,4); ctx.lineTo(-16,-12); ctx.moveTo(11,4); ctx.lineTo(16,-12); ctx.stroke(); drawTBS(0, -32, "#dc2626"); }
+        else { let sw = planter.moving?Math.sin(frame*0.6)*4:0; ctx.moveTo(-11,4); ctx.lineTo(-11,14-sw); ctx.moveTo(11,4); ctx.lineTo(11,14+sw); ctx.stroke(); }
+        
+        // Render indikator pelindung lingkaran hijau neon ketika masa kebal aktif (respawnTimer > 0)
+        if (planter.respawnTimer > 0) {
+            ctx.strokeStyle = "#4ade80"; ctx.lineWidth = 3;
+            ctx.beginPath(); ctx.arc(0, 0, 24, -Math.PI / 2, -Math.PI / 2 + (planter.respawnTimer / 120) * Math.PI * 2); ctx.stroke();
+        }
+        ctx.restore();
+    }
+    
+    function drawEnvironment() {
+        ctx.save(); ctx.translate(-camera.x, -camera.y);
+        let sC = Math.max(0, Math.floor(camera.x/TILE)); let eC = Math.min(COLS-1, Math.floor((camera.x+canvas.width)/TILE)); let sR = Math.max(0, Math.floor(camera.y/TILE)); let eR = Math.min(ROWS-1, Math.floor((camera.y+canvas.height)/TILE));
+        
+        ctx.strokeStyle = "#1e293b"; ctx.lineWidth = 1;
+        for (let r=sR; r<=eR; r++) for (let c=sC; c<=eC; c++) {
+            if(!isSolid(c,r)){ ctx.beginPath(); ctx.moveTo(c*TILE+TILE/2, r*TILE); ctx.lineTo(c*TILE+TILE/2, r*TILE+TILE); ctx.stroke(); ctx.beginPath(); ctx.moveTo(c*TILE, r*TILE+TILE/2); ctx.lineTo(c*TILE+TILE, r*TILE+TILE/2); ctx.stroke(); }
+        }
+        
+        // Blok penggambaran bendera/lingkaran checkpoint lama telah dibersihkan dari sini
+        
+        for (let r=sR; r<=eR; r++) for (let c=sC; c<=eC; c++) { let char = currentMapLayout[r][c]; if (char === 'W' || ['1','2','3','4'].includes(char)) drawDirtWall(c*TILE, r*TILE); else if (char === 'T') drawTreeWall(c*TILE, r*TILE); }
+        if (isInView(exitPos.c*TILE, exitPos.r*TILE)) drawExit(exitPos.c*TILE, exitPos.r*TILE, true);
+        
+        for (let f of fruits) if (f.active && isInView(f.c*TILE, f.r*TILE)) drawTBS(f.c*TILE+TILE/2, f.r*TILE+TILE/2, f.type==='green'?'#16a34a':'#ea580c');
+        for (let ch of chests) if (isInView(ch.c*TILE, ch.r*TILE)) drawChest(ch.c*TILE, ch.r*TILE, ch.isOpen);
+        for (let b of bushes) if (b.active && isInView(b.c*TILE, b.r*TILE)) drawBush(b.c*TILE, b.r*TILE);
+        for (let rk of rocks) if (isInView(rk.x, rk.y)) drawRock(rk.x, rk.y);
+        for (let m of muds) if (isInView(m.c*TILE, m.r*TILE)) drawMud(m.c*TILE, m.r*TILE);
+        
+        for (let e of enemies) if (isInView(e.x, e.y)) { if (e.type==='ular') drawUlar(e.x, e.y, e.dirX, e.dirY, frame); else drawBabi(e.x, e.y, e.dirX, e.dirY, frame); }
+        drawPlanter(planter.x, planter.y, frame);
+        
+        for (let i = particles.length - 1; i >= 0; i--) { let p = particles[i]; p.life--; p.x+=p.vx; p.y+=p.vy; ctx.fillStyle=p.color; ctx.globalAlpha=p.life/p.maxLife; ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, Math.PI*2); ctx.fill(); if(p.life<=0) particles.splice(i,1); }
+        for(let i=floatingTexts.length-1; i>=0; i--) { let ft = floatingTexts[i]; ft.life--; ft.y-=0.8; ctx.globalAlpha=ft.life/ft.maxLife; ctx.fillStyle=ft.color; ctx.font="bold 18px Inter"; ctx.textAlign="center"; ctx.shadowColor="rgba(0,0,0,0.8)"; ctx.shadowBlur=4; ctx.fillText(ft.text, ft.x, ft.y); if(ft.life<=0) floatingTexts.splice(i,1); }
+        ctx.globalAlpha=1.0; ctx.shadowBlur=0; ctx.restore();
+    }
+    
+    function gameLoop() {
+        if (!playing || levelComplete) return;
+        frame++; updateGameEntities(); updateCamera();
+        ctx.clearRect(0, 0, canvas.width, canvas.height); drawEnvironment();
+        requestAnimationFrame(gameLoop);
+    }
+</script>
+
+</body>
+</html>
